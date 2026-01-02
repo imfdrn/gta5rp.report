@@ -1,62 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Просмотр отчёта</title>
-  <style>
-    body { font-family: Arial; margin: 20px; }
-    .block { padding: 12px; border: 1px solid #ccc; border-radius: 12px; margin-bottom: 12px; }
-    img { max-width: 400px; border-radius: 10px; }
-  </style>
+<meta charset="UTF-8">
+<title>Просмотр отчёта — GTA5RP</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Roboto',sans-serif;background:#0f0f0f;color:#fff}
+.container{max-width:900px;margin:40px auto;padding:0 20px}
+h1{text-align:center;margin-bottom:30px}
+.card{background:#151515;border-radius:20px;padding:24px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,0.5);transition:transform 0.2s,box-shadow 0.2s}
+.card:hover{transform:translateY(-5px);box-shadow:0 8px 30px rgba(0,0,0,0.7)}
+.btn{display:inline-block;background:#2a6bff;color:#fff;padding:12px 20px;border:none;border-radius:12px;cursor:pointer;font-weight:500;text-decoration:none;transition:background 0.2s,transform 0.2s}
+.btn.secondary{background:#2a2a2a}
+.btn:hover{background:#1e4ed0;transform:scale(1.05)}
+img{max-width:100%;border-radius:12px;margin-top:8px;display:block}
+</style>
 </head>
-
 <body>
-
-<h2>Отчёт</h2>
-
-<div id="content">Загрузка...</div>
+<div class="container" id="app"></div>
 
 <script>
-async function load() {
-  const params = new URLSearchParams(location.search);
-  const id = params.get("id");
+function loadReports(){return JSON.parse(localStorage.getItem("reports")||"{}");}
+const app=document.getElementById("app");
+const params=new URLSearchParams(location.search);
+const id=params.get("id");
+const reports=loadReports();
+const r=reports[id];
 
-  if (!id) {
-    document.getElementById("content").innerHTML = "Отчёт не найден";
-    return;
-  }
-
-  const url = `reports/${id}.json`;
-
-  const res = await fetch(url);
-  if (!res.ok) {
-    document.getElementById("content").innerHTML = "Файл отчёта не найден";
-    return;
-  }
-
-  const data = await res.json();
-
-  let html = "";
-
-  for (const f of data.fields) {
-    html += `<div class="block"><b>${f.name}</b><br><br>`;
-
-    if (f.type === "text") {
-      html += `<div>${f.value.replace(/\n/g, "<br>")}</div>`;
-    }
-
-    if (f.type === "image") {
-      html += `<img src="${f.preview}">`;
-    }
-
-    html += `</div>`;
-  }
-
-  document.getElementById("content").innerHTML = html;
+if(!r){
+  app.innerHTML=`<div class="card"><h2>Отчёт не найден</h2>
+  <a class="btn" href="https://imfdrn.github.io/gta5rp.report/">На главную</a></div>`;
+}else{
+  app.innerHTML=`<h1>Отчёт #${id}</h1>
+  <a class="btn secondary" href="https://imfdrn.github.io/gta5rp.report/">Создать новый</a>`;
+  r.data.forEach(f=>{
+    const block=document.createElement("div");
+    block.className="card";
+    block.innerHTML=`<h3>${f.name}</h3><p>${f.text||""}</p>
+      ${(f.images||[]).map(i=>`<img src="${i}">`).join("")}`;
+    app.appendChild(block);
+  });
 }
-
-load();
 </script>
-
 </body>
 </html>

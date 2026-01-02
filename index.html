@@ -2,183 +2,27 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>GTA5RP Reports</title>
+<title>GTA5RP Reports — Главная</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-body{font-family:Arial;background:#0f0f0f;color:#fff;margin:0}
-.container{max-width:900px;margin:20px auto;padding:20px}
-.card{background:#151515;border-radius:16px;padding:16px;margin-bottom:12px;border:1px solid #2a2a2a}
-.btn{background:#2a6bff;border:none;padding:10px 14px;border-radius:10px;color:#fff;cursor:pointer}
-.btn.secondary{background:#2a2a2a}
-.input{background:#101010;border:1px solid #2a2a2a;color:#fff;border-radius:10px;padding:8px;width:100%}
-img{max-width:100%;border-radius:10px;margin-top:6px}
+body { margin:0; font-family:'Roboto',sans-serif; background:#0f0f0f; color:#fff; }
+.container { max-width:900px; margin:40px auto; padding:0 20px; }
+h1 { text-align:center; margin-bottom:30px; }
+.card { background:#151515; border-radius:20px; padding:24px; margin-bottom:20px; box-shadow:0 4px 20px rgba(0,0,0,0.5); transition: transform 0.2s, box-shadow 0.2s; }
+.card:hover { transform: translateY(-5px); box-shadow:0 8px 30px rgba(0,0,0,0.7); }
+.btn { display:inline-block; background:#2a6bff; color:#fff; padding:12px 20px; border:none; border-radius:12px; cursor:pointer; font-weight:500; text-decoration:none; transition: background 0.2s, transform 0.2s; }
+.btn:hover { background:#1e4ed0; transform:scale(1.05); }
 </style>
 </head>
-
 <body>
-<div class="container" id="app"></div>
-
-<script>
-const app = document.getElementById("app");
-
-function uid(){return Math.random().toString(36).substring(2,9);}
-function loadReports(){return JSON.parse(localStorage.getItem("reports")||"{}");}
-function saveReports(r){localStorage.setItem("reports",JSON.stringify(r));}
-
-const params = new URLSearchParams(location.search);
-const reportId = params.get("id");
-
-if(reportId){ renderView(reportId); }
-else{ renderHome(); }
-
-function renderHome(){
-  app.innerHTML = `
-    <div class="card">
-      <h2>GTA5RP Reports</h2>
-      <p>Публичные отчёты на повышение</p>
-      <button class="btn" onclick="renderCreate()">Создать отчёт</button>
-    </div>
-  `;
-}
-
-function renderCreate(){
-  const id = uid();
-
-  app.innerHTML = `
-    <div class="card">
-      <h2>Создание отчёта</h2>
-
-      <div id="fields"></div>
-
-      <button class="btn secondary" onclick="addField()">Добавить поле</button>
-      <br><br>
-      <button class="btn" onclick="publish('${id}')">Опубликовать</button>
-    </div>
-  `;
-
-  window.addField = () => {
-    const el = document.createElement("div");
-    el.className="card";
-
-    el.innerHTML = `
-      <input class="input" placeholder="Имя поля (обязательно)" data-name>
-      <textarea class="input" placeholder="Текст..." data-text></textarea>
-
-      <input type="file" multiple accept="image/*" data-files>
-      <div data-preview></div>
-    `;
-
-    const fileInput = el.querySelector("[data-files]");
-    const preview = el.querySelector("[data-preview]");
-
-    fileInput.addEventListener("change", e=>{
-      preview.innerHTML = "";
-      [...e.target.files].forEach(f=>{
-        const r = new FileReader();
-        r.onload = () => preview.innerHTML += `<img src="${r.result}">`;
-        r.readAsDataURL(f);
-      });
-    });
-
-    document.getElementById("fields").appendChild(el);
-  };
-
-  async function filesToBase64(fileList){
-    const tasks = [...fileList].map(file =>
-      new Promise(resolve=>{
-        const r = new FileReader();
-        r.onload = ()=>resolve(r.result);
-        r.readAsDataURL(file);
-      })
-    );
-    return await Promise.all(tasks);
-  }
-
-  window.publish = async (rid)=>{
-    const reports = loadReports();
-    const data = [];
-
-    const blocks = document.querySelectorAll("#fields .card");
-
-    if(!blocks.length){
-      alert("Добавь хотя бы одно поле");
-      return;
-    }
-
-    for(const block of blocks){
-      const name = block.querySelector("[data-name]").value.trim();
-      const text = block.querySelector("[data-text]").value.trim();
-
-      if(!name){
-        alert("У каждого поля должно быть имя");
-        return;
-      }
-
-      const files = block.querySelector("[data-files]").files;
-      const images = await filesToBase64(files);
-
-      data.push({name,text,images});
-    }
-
-    reports[rid] = {
-      id: rid,
-      data,
-      created: Date.now()
-    };
-
-    saveReports(reports);
-
-    const url = location.origin + location.pathname + "?id=" + rid;
-
-    app.innerHTML = `
-      <div class="card">
-        <h2>Отчёт опубликован</h2>
-
-        <p>Ссылка на отчёт:</p>
-        <input class="input" value="${url}" readonly>
-
-        <br><br>
-        <a class="btn" href="${url}">Открыть отчёт</a>
-      </div>
-    `;
-  };
-}
-
-function renderView(id){
-  const reports = loadReports();
-  const r = reports[id];
-
-  if(!r){
-    app.innerHTML = `
-      <div class="card">
-        <h2>Отчёт не найден</h2>
-        <button class="btn" onclick="location='/'">На главную</button>
-      </div>
-    `;
-    return;
-  }
-
-  app.innerHTML = `
-    <div class="card">
-      <h2>Отчёт #${id}</h2>
-      <a class="btn secondary" href="/">Создать новый</a>
-    </div>
-  `;
-
-  r.data.forEach(f=>{
-    const block = document.createElement("div");
-    block.className="card";
-
-    block.innerHTML = `
-      <h3>${f.name}</h3>
-      <p>${f.text || ""}</p>
-      ${(f.images||[]).map(i=>`<img src="${i}">`).join("")}
-    `;
-
-    app.appendChild(block);
-  });
-}
-</script>
+<div class="container">
+  <h1>GTA5RP Reports</h1>
+  <div class="card">
+    <h2>Публичные отчёты на повышение</h2>
+    <p>Создавайте отчёты и делитесь ссылкой с командой.</p>
+    <a href="create.html" class="btn">Создать новый отчёт</a>
+  </div>
+</div>
 </body>
 </html>

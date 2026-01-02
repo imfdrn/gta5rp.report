@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Создание отчёта — GTA5RP</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body { margin:0; font-family:'Roboto',sans-serif; background:#0f0f0f; color:#fff; }
+.container { max-width:900px; margin:40px auto; padding:0 20px; }
+h1 { text-align:center; margin-bottom:30px; }
+.card { background:#151515; border-radius:20px; padding:24px; margin-bottom:20px; box-shadow:0 4px 20px rgba(0,0,0,0.5); transition: transform 0.2s, box-shadow 0.2s; }
+.card:hover { transform: translateY(-5px); box-shadow:0 8px 30px rgba(0,0,0,0.7); }
+.btn { display:inline-block; background:#2a6bff; color:#fff; padding:12px 20px; border:none; border-radius:12px; cursor:pointer; font-weight:500; text-decoration:none; transition: background 0.2s, transform 0.2s; }
+.btn.secondary { background:#2a2a2a; }
+.btn:hover { background:#1e4ed0; transform:scale(1.05); }
+.input { width:100%; background:#101010; border:1px solid #2a2a2a; border-radius:12px; padding:10px; margin-top:8px; margin-bottom:8px; color:#fff; }
+img { max-width:100%; border-radius:12px; margin-top:8px; display:block; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Создание отчёта</h1>
+  <div id="fields"></div>
+  <div class="card">
+    <button class="btn secondary" onclick="addField()">Добавить поле</button>
+    <button class="btn" onclick="publish()">Опубликовать</button>
+    <a class="btn secondary" href="index.html">На главную</a>
+  </div>
+</div>
+
+<script>
+function uid(){return Math.random().toString(36).substring(2,9);}
+function loadReports(){return JSON.parse(localStorage.getItem("reports")||"{}");}
+function saveReports(r){localStorage.setItem("reports",JSON.stringify(r));}
+
+const fieldsContainer=document.getElementById("fields");
+let fieldIds=[];
+
+function addField(){
+  const id=uid();
+  fieldIds.push(id);
+  const el=document.createElement("div");
+  el.className="card";
+  el.id=id;
+  el.innerHTML=`
+    <input class="input" placeholder="Имя поля (обязательно)" data-name>
+    <textarea class="input" placeholder="Текст..." data-text></textarea>
+    <input type="file" multiple accept="image/*" data-files>
+    <div data-preview></div>
+  `;
+  const fileInput=el.querySelector("[data-files]");
+  const preview=el.querySelector("[data-preview]");
+  fileInput.addEventListener("change", e=>{
+    preview.innerHTML="";
+    [...e.target.files].forEach(f=>{
+      const r=new FileReader();
+      r.onload=()=> preview.innerHTML+=`<img src="${r.result}">`;
+      r.readAsDataURL(f);
+    });
+  });
+  fieldsContainer.appendChild(el);
+}
+
+async function filesToBase64(fileList){
+  const tasks=[...fileList].map(f=>new Promise(res=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result);
+    r.readAsDataURL(f);
+  }));
+  return await Promise.all(tasks);
+}
+
+async function publish(){
+  const reports=loadReports();
+  if(!fieldIds.length){alert("Добавь хотя бы одно поле"); return;}
+  const id=uid();
+  const data=[];
+  for(const fid of fieldIds){
+    const el=document.getElementById(fid);
+    const name=el.querySelector("[data-name]").value.trim();
+    if(!name){alert("У каждого поля должно быть имя"); return;}
+    const text=el.querySelector("[data-text]").value.trim();
+    const files=el.querySelector("[data-files]").files;
+    const images=await filesToBase64(files);
+    data.push({name,text,images});
+  }
+  reports[id]={id,data,created:Date.now()};
+  saveReports(reports);
+  const url=location.origin+"/view.html?id="+id;
+  alert("Отчёт опубликован!\nСсылка:\n"+url);
+  window.location.href=url;
+}
+</script>
+</body>
+</html>
