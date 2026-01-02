@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Просмотр отчёта</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    .block { padding: 12px; border: 1px solid #ccc; border-radius: 12px; margin-bottom: 12px; }
+    img { max-width: 400px; border-radius: 10px; }
+  </style>
+</head>
+
+<body>
+
+<h2>Отчёт</h2>
+
+<div id="content">Загрузка...</div>
+
+<script>
+async function load() {
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id");
+
+  if (!id) {
+    document.getElementById("content").innerHTML = "Отчёт не найден";
+    return;
+  }
+
+  const url = `reports/${id}.json`;
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    document.getElementById("content").innerHTML = "Файл отчёта не найден";
+    return;
+  }
+
+  const data = await res.json();
+
+  let html = "";
+
+  for (const f of data.fields) {
+    html += `<div class="block"><b>${f.name}</b><br><br>`;
+
+    if (f.type === "text") {
+      html += `<div>${f.value.replace(/\n/g, "<br>")}</div>`;
+    }
+
+    if (f.type === "image") {
+      html += `<img src="${f.preview}">`;
+    }
+
+    html += `</div>`;
+  }
+
+  document.getElementById("content").innerHTML = html;
+}
+
+load();
+</script>
+
+</body>
+</html>

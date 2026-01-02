@@ -1,146 +1,184 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>GTA5RP — отчёты на повышение</title>
-  <style>
-    body { font-family: Arial; margin: 20px; }
-    .block { padding: 12px; border: 1px solid #ccc; border-radius: 12px; margin-bottom: 12px; }
-    .row { padding: 8px; border: 1px dashed #aaa; border-radius: 10px; margin-bottom: 10px; }
-    .label { font-size: 12px; opacity: .7; }
-    .error { color: #c0392b; margin-top: 8px; }
-    textarea { width: 100%; }
-  </style>
+<meta charset="UTF-8">
+<title>GTA5RP Reports</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{font-family:Arial;background:#0f0f0f;color:#fff;margin:0}
+.container{max-width:900px;margin:20px auto;padding:20px}
+.card{background:#151515;border-radius:16px;padding:16px;margin-bottom:12px;border:1px solid #2a2a2a}
+.btn{background:#2a6bff;border:none;padding:10px 14px;border-radius:10px;color:#fff;cursor:pointer}
+.btn.secondary{background:#2a2a2a}
+.input{background:#101010;border:1px solid #2a2a2a;color:#fff;border-radius:10px;padding:8px;width:100%}
+img{max-width:100%;border-radius:10px;margin-top:6px}
+</style>
 </head>
 
 <body>
-
-<h2>GTA5RP — отчёты на повышение</h2>
-
-<div class="block">
-  ⚠️ Сейчас отчёты НЕ сохраняются — это конструктор.<br>
-  На следующем шаге подключим сохранение в GitHub и ссылки на отчёты.
-</div>
-
-<button id="createReportBtn">Создать отчёт</button>
-
-<div id="editor" style="display:none" class="block">
-  <h3>Новый отчёт</h3>
-
-  <div id="fields"></div>
-
-  <button id="addTextField">➕ Текстовое поле</button>
-  <button id="addImageField">🖼 Фото</button>
-
-  <div id="errorBox" class="error"></div>
-
-  <br>
-  <button id="saveReport">💾 Сохранить отчёт</button>
-</div>
+<div class="container" id="app"></div>
 
 <script>
-const state = {
-  draft: []
-};
+const app = document.getElementById("app");
 
-const fieldsBox = document.getElementById("fields");
-const errorBox = document.getElementById("errorBox");
+function uid(){return Math.random().toString(36).substring(2,9);}
+function loadReports(){return JSON.parse(localStorage.getItem("reports")||"{}");}
+function saveReports(r){localStorage.setItem("reports",JSON.stringify(r));}
 
-function addTextField() {
-  const id = crypto.randomUUID();
-  state.draft.push({ id, type: "text", name: "", value: "" });
+const params = new URLSearchParams(location.search);
+const reportId = params.get("id");
 
-  const div = document.createElement("div");
-  div.className = "row";
-  div.innerHTML = `
-    <div class="label">Название поля *</div>
-    <input type="text" data-id="${id}" data-role="name" placeholder="Например: Отчёт за неделю" style="width:100%">
+if(reportId){ renderView(reportId); }
+else{ renderHome(); }
 
-    <br><br>
-    <div class="label">Текст</div>
-    <textarea rows="3" data-id="${id}" data-role="value" placeholder="Введите текст..."></textarea>
+function renderHome(){
+  app.innerHTML = `
+    <div class="card">
+      <h2>GTA5RP Reports</h2>
+      <p>Публичные отчёты на повышение</p>
+      <button class="btn" onclick="renderCreate()">Создать отчёт</button>
+    </div>
   `;
-
-  fieldsBox.appendChild(div);
-
-  div.querySelector('[data-role="name"]').oninput = e => {
-    const f = state.draft.find(x => x.id === id);
-    f.name = e.target.value.trim();
-  };
-
-  div.querySelector('[data-role="value"]').oninput = e => {
-    const f = state.draft.find(x => x.id === id);
-    f.value = e.target.value;
-  };
 }
 
-function addImageField() {
-  const id = crypto.randomUUID();
-  state.draft.push({ id, type: "image", name: "", file: null, preview: "" });
+function renderCreate(){
+  const id = uid();
 
-  const div = document.createElement("div");
-  div.className = "row";
-  div.innerHTML = `
-    <div class="label">Название поля *</div>
-    <input type="text" data-id="${id}" data-role="name" placeholder="Например: Скриншоты дежурства" style="width:100%">
+  app.innerHTML = `
+    <div class="card">
+      <h2>Создание отчёта</h2>
 
-    <br><br>
-    <input type="file" accept="image/*" data-id="${id}" data-role="file">
-    <br>
-    <img data-id="${id}" data-role="preview" style="max-width:220px;display:none;margin-top:8px">
+      <div id="fields"></div>
+
+      <button class="btn secondary" onclick="addField()">Добавить поле</button>
+      <br><br>
+      <button class="btn" onclick="publish('${id}')">Опубликовать</button>
+    </div>
   `;
 
-  fieldsBox.appendChild(div);
+  window.addField = () => {
+    const el = document.createElement("div");
+    el.className="card";
 
-  const nameInput = div.querySelector('[data-role="name"]');
-  const fileInput = div.querySelector('[data-role="file"]');
-  const img = div.querySelector('[data-role="preview"]');
+    el.innerHTML = `
+      <input class="input" placeholder="Имя поля (обязательно)" data-name>
+      <textarea class="input" placeholder="Текст..." data-text></textarea>
 
-  nameInput.oninput = e => {
-    const f = state.draft.find(x => x.id === id);
-    f.name = e.target.value.trim();
+      <input type="file" multiple accept="image/*" data-files>
+      <div data-preview></div>
+    `;
+
+    const fileInput = el.querySelector("[data-files]");
+    const preview = el.querySelector("[data-preview]");
+
+    fileInput.addEventListener("change", e=>{
+      preview.innerHTML = "";
+      [...e.target.files].forEach(f=>{
+        const r = new FileReader();
+        r.onload = () => preview.innerHTML += `<img src="${r.result}">`;
+        r.readAsDataURL(f);
+      });
+    });
+
+    document.getElementById("fields").appendChild(el);
   };
 
-  fileInput.onchange = e => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = ev => {
-      img.src = ev.target.result;
-      img.style.display = "block";
-
-      const f = state.draft.find(x => x.id === id);
-      f.preview = ev.target.result;
-      f.file = file;
-    };
-    reader.readAsDataURL(file);
-  };
-}
-
-document.getElementById("addTextField").onclick = addTextField;
-document.getElementById("addImageField").onclick = addImageField;
-
-document.getElementById("createReportBtn").onclick = () => {
-  state.draft = [];
-  fieldsBox.innerHTML = "";
-  errorBox.innerHTML = "";
-  document.getElementById("editor").style.display = "block";
-};
-
-document.getElementById("saveReport").onclick = () => {
-  errorBox.innerHTML = "";
-
-  for (const f of state.draft) {
-    if (!f.name) {
-      errorBox.innerHTML = "❗ У каждого поля обязательно должно быть имя.";
-      return;
-    }
+  async function filesToBase64(fileList){
+    const tasks = [...fileList].map(file =>
+      new Promise(resolve=>{
+        const r = new FileReader();
+        r.onload = ()=>resolve(r.result);
+        r.readAsDataURL(file);
+      })
+    );
+    return await Promise.all(tasks);
   }
 
-  alert("✔ Проверка пройдена — дальше подключаем сохранение отчёта в GitHub и публичную ссылку");
-};
-</script>
+  window.publish = async (rid)=>{
+    const reports = loadReports();
+    const data = [];
 
+    const blocks = document.querySelectorAll("#fields .card");
+
+    if(!blocks.length){
+      alert("Добавь хотя бы одно поле");
+      return;
+    }
+
+    for(const block of blocks){
+      const name = block.querySelector("[data-name]").value.trim();
+      const text = block.querySelector("[data-text]").value.trim();
+
+      if(!name){
+        alert("У каждого поля должно быть имя");
+        return;
+      }
+
+      const files = block.querySelector("[data-files]").files;
+      const images = await filesToBase64(files);
+
+      data.push({name,text,images});
+    }
+
+    reports[rid] = {
+      id: rid,
+      data,
+      created: Date.now()
+    };
+
+    saveReports(reports);
+
+    const url = location.origin + location.pathname + "?id=" + rid;
+
+    app.innerHTML = `
+      <div class="card">
+        <h2>Отчёт опубликован</h2>
+
+        <p>Ссылка на отчёт:</p>
+        <input class="input" value="${url}" readonly>
+
+        <br><br>
+        <a class="btn" href="${url}">Открыть отчёт</a>
+      </div>
+    `;
+  };
+}
+
+function renderView(id){
+  const reports = loadReports();
+  const r = reports[id];
+
+  if(!r){
+    app.innerHTML = `
+      <div class="card">
+        <h2>Отчёт не найден</h2>
+        <button class="btn" onclick="location='/'">На главную</button>
+      </div>
+    `;
+    return;
+  }
+
+  app.innerHTML = `
+    <div class="card">
+      <h2>Отчёт #${id}</h2>
+      <a class="btn secondary" href="/">Создать новый</a>
+    </div>
+  `;
+
+  r.data.forEach(f=>{
+    const block = document.createElement("div");
+    block.className="card";
+
+    block.innerHTML = `
+      <h3>${f.name}</h3>
+      <p>${f.text || ""}</p>
+      ${(f.images||[]).map(i=>`<img src="${i}">`).join("")}
+    `;
+
+    app.appendChild(block);
+  });
+}
+</script>
 </body>
 </html>
