@@ -1,0 +1,24 @@
+name: Publish Reports
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Ensure reports folder exists
+        run: mkdir -p reports
+
+      - name: Commit new reports
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add reports/*.json
+          git commit -m "Auto-publish new reports" || echo "Nothing to commit"
+          git push

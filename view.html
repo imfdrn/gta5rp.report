@@ -19,21 +19,21 @@ img{max-width:100%;border-radius:12px;margin-top:8px;display:block}
 </head>
 <body>
 <div class="container" id="app"></div>
-
 <script>
-function loadReports(){return JSON.parse(localStorage.getItem("reports")||"{}");}
 const app=document.getElementById("app");
 const params=new URLSearchParams(location.search);
 const id=params.get("id");
-const reports=loadReports();
-const r=reports[id];
 
-if(!r){
-  app.innerHTML=`<div class="card"><h2>Отчёт не найден</h2>
-  <a class="btn" href="https://imfdrn.github.io/gta5rp.report/">На главную</a></div>`;
-}else{
-  app.innerHTML=`<h1>Отчёт #${id}</h1>
-  <a class="btn secondary" href="https://imfdrn.github.io/gta5rp.report/">Создать новый</a>`;
+fetch(`reports/${id}.json`)
+.then(res=>res.json())
+.then(r=>{
+  if(!r){
+    app.innerHTML=`<div class="card"><h2>Отчёт не найден</h2>
+    <a class="btn" href="index.html">На главную</a></div>`;
+    return;
+  }
+  app.innerHTML=`<h1>Отчёт #${r.id}</h1>
+    <a class="btn secondary" href="create.html">Создать новый</a>`;
   r.data.forEach(f=>{
     const block=document.createElement("div");
     block.className="card";
@@ -41,7 +41,9 @@ if(!r){
       ${(f.images||[]).map(i=>`<img src="${i}">`).join("")}`;
     app.appendChild(block);
   });
-}
+})
+.catch(()=>app.innerHTML=`<div class="card"><h2>Отчёт не найден</h2>
+<a class="btn" href="index.html">На главную</a></div>`);
 </script>
 </body>
 </html>

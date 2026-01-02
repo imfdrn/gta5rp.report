@@ -20,19 +20,24 @@ img { max-width:100%; border-radius:12px; margin-top:8px; display:block; }
 </head>
 <body>
 <div class="container">
-  <h1>Создание отчёта</h1>
-  <div id="fields"></div>
-  <div class="card">
-    <button class="btn secondary" onclick="addField()">Добавить поле</button>
-    <button class="btn" onclick="publish()">Опубликовать</button>
-    <a class="btn secondary" href="index.html">На главную</a>
-  </div>
+<h1>Создание отчёта</h1>
+<div id="fields"></div>
+<div class="card">
+<button class="btn secondary" onclick="addField()">Добавить поле</button>
+<button class="btn" onclick="publish()">Опубликовать</button>
+<a class="btn secondary" href="index.html">На главную</a>
+</div>
 </div>
 
 <script>
 function uid(){return Math.random().toString(36).substring(2,9);}
-function loadReports(){return JSON.parse(localStorage.getItem("reports")||"{}");}
-function saveReports(r){localStorage.setItem("reports",JSON.stringify(r));}
+function filesToBase64(fileList){
+  return Promise.all([...fileList].map(f=>new Promise(res=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result);
+    r.readAsDataURL(f);
+  })));
+}
 
 const fieldsContainer=document.getElementById("fields");
 let fieldIds=[];
@@ -62,19 +67,8 @@ function addField(){
   fieldsContainer.appendChild(el);
 }
 
-async function filesToBase64(fileList){
-  const tasks=[...fileList].map(f=>new Promise(res=>{
-    const r=new FileReader();
-    r.onload=()=>res(r.result);
-    r.readAsDataURL(f);
-  }));
-  return await Promise.all(tasks);
-}
-
 async function publish(){
-  const reports=loadReports();
   if(!fieldIds.length){alert("Добавь хотя бы одно поле"); return;}
-  const id=uid();
   const data=[];
   for(const fid of fieldIds){
     const el=document.getElementById(fid);
@@ -85,11 +79,15 @@ async function publish(){
     const images=await filesToBase64(files);
     data.push({name,text,images});
   }
-  reports[id]={id,data,created:Date.now()};
-  saveReports(reports);
-  const url=location.origin+"/view.html?id="+id;
-  alert("Отчёт опубликован!\nСсылка:\n"+url);
-  window.location.href=url;
+
+  // Создаём JSON-файл с уникальным ID
+  const reportId=uid();
+  const blob=new Blob([JSON.stringify({id:reportId,data,created:Date.now()})],{type:'application/json'});
+  const link=document.createElement('a');
+  link.href=URL.createObjectURL(blob);
+  link.download=`reports/${reportId}.json`;
+  link.click();
+  alert(`Отчёт готов! Скачан JSON файл. Залей его в папку reports/ и workflow опубликует его автоматически.`)
 }
 </script>
 </body>
